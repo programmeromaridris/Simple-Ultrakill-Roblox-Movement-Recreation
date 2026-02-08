@@ -1,0 +1,117 @@
+local Slide = {}
+
+-- // Services
+local Players = game:GetService("Players")
+
+local rs = game:GetService("ReplicatedStorage")
+local PlayerState = require(rs.Modules.PlayerState)
+local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
+
+-- Config
+local SLIDE_SPEED = 80 -- Speed while actively sliding
+local SLIDE_FRICTION = 0.01 -- 0 = ice, 1 = sandpaper (lower is a longer slide stop)
+local SLIDE_DURATION = 0.7
+local SLIDE_CD = 0.5
+local TURN_SPEED = 0.15 -- lower is wider drift, higher is a snappy turn
+
+local DEFAULT_HIPHEIGHT = 2 -- the normal standing height of the player
+
+function Slide.Execute(actionName, inputState, inputObject)
+	if inputState ~= Enum.UserInputState.Begin then return end
+
+
+	local Player = Players.LocalPlayer
+	local Char = Player.Character
+	local humanoid = Char:FindFirstChild("Humanoid")
+	local hrp = Char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid or not PlayerState.CanAct() then return end
+	if PlayerState.GetState("isSliding") then return end
+	
+	
+	-- CD Check
+	local currentTime = tick()
+	local lastDash = PlayerState.GetState("LastDashTime") or 0
+	if currentTime - lastDash < SLIDE_CD then return end
+
+-- set states to prevent jumping/attacking while sliding
+	PlayerState.SetState("LastDashTime", currentTime)
+	PlayerState.SetState("isSliding", true)
+	print("Sliding!")
+	
+	local originalProperties = {}
+	local slidePhys = PhysicalProperties.new(0.5, SLIDE_FRICTION, 0, 100, 100)
+
+  -- manipulating normal roblox phyiscs to make sliding steerable like in Ultrakill
+	for _, part in ipairs(Char:GetDescendants()) do
+		if part:IsA("BasePart") then
+ -- save old friction settings to restore them later
+			originalProperties[part] = part.CustomPhysicalProperties
+			part.CustomPhysicalProperties = slidePhys
+		end
+	end
+	
+	-- drop to the floor
+	humanoid.HipHeight = 0
+	
+	
+	
+	--- ========
+	-- bv logic
+
+-- propels the player forward to slide along the ground
+	local bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(100000, 0, 100000) 
+      -- y is 0 so gravity can be normal	
+	-- Start velocity based on where theyre already looking
+	local startDir = humanoid.MoveDirection
+	if startDir.Magnitude == 0 then startDir = hrp.CFrame.LookVector end
+	bv.Velocity = startDir * SLIDE_SPEED
+	bv.Parent = hrp
+	
+	local slideConnection -- prevent memory leak 
+
+  -- this loop lets the player steer while sliding, so it isnt as rigid
+	slideConnection = RunService.Heartbeat:Connect(function(dt)
+		local movedir = humanoid.MoveDirection
+		
+		if movedir.Magnitude == 0 then
+			return
+		end
+		
+		local targetVelocity = movedir * SLIDE_SPEED
+		local currentVelocity = bv.Velocity
+
+		bv.Velocity = currentVelocity:Lerp(targetVelocity, TURN_SPEED)
+
+	
+		if bv.Velocity.Magnitude > 1 then
+			local lookDir = bv.Velocity.Unit
+			local newCFrame = CFrame.lookAt(hrp.Position, hrp.Position + lookDir)
+			hrp.CFrame = hrp.CFrame:Lerp(newCFrame, 0.2)
+		end
+	end)
+
+
+	task.delay(SLIDE_DURATION, function()
+		if slideConnection then slideConnection:Disconnect() end
+		if bv then bv:Destroy() end
+
+		task.wait(0.3) 
+
+		-- Restore
+		for part, props in pairs(originalProperties) do
+			if part and part.Parent then
+				part.CustomPhysicalProperties = props
+			end
+		end
+
+	
+		humanoid.HipHeight = DEFAULT_HIPHEIGHT
+
+		PlayerState.SetState("isSliding", false)
+		print("Slide ended.")
+	end)
+end
+
+return Slide 
