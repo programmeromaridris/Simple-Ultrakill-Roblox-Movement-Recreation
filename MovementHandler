@@ -1,0 +1,38 @@
+
+
+-- // Services
+local CAS = game:GetService("ContextActionService")
+local rs = game:GetService("ReplicatedStorage")
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+
+local PlayerState = require(rs.Modules.PlayerState)
+
+-- // Modules
+local Sprint = require(script.Parent.MovementAbilities.Sprint)
+local Dash = require(script.Parent.MovementAbilities.Dash)
+local JumpHandler = require(script.Parent.MovementAbilities.Jump)
+local M1 = require(script.Parent.MovementAbilities.M1)
+local Slide = require(script.Parent.MovementAbilities.Slide)
+
+
+-- Bind actions
+-- "Sprint" = Name of action
+-- Sprint.Execute = The function to run
+-- true = Create a mobile button automatically
+-- Enum... = The keys/buttons that trigger it
+CAS:BindAction("Sprint", Sprint.Execute, true, Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL2)
+CAS:BindAction("Dash", Dash.Execute, true, Enum.KeyCode.Q, Enum.KeyCode.ButtonX)
+CAS:BindAction("Jump", JumpHandler.Execute, true, Enum.KeyCode.Space)
+CAS:BindAction("M1", M1.Execute, true, Enum.UserInputType.MouseButton1)
+CAS:BindAction("Slide", Slide.Execute, true, Enum.KeyCode.C)
+
+
+player.CharacterAdded:Connect(function(char)
+	local humanoid = char:WaitForChild("Humanoid")
+	humanoid.StateChanged:Connect(function(oldState, newState)
+		if newState == Enum.HumanoidStateType.Landed then
+			PlayerState.SetState("JumpCount", 0)
+		end
+	end)
+end)
