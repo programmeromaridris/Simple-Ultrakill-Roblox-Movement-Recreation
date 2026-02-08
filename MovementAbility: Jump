@@ -1,0 +1,80 @@
+-- This jumping module overrides the built in roblox jumping, in favor of adding double jumps and vaulting.
+
+local BetterJump = {}
+
+
+-- // Services
+local rs = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local PlayerState = require(rs.Modules.PlayerState)
+
+-- // Variables
+local JUMP_POWER = 70
+local DJUMP_POWER = 70
+local VAULT_POWER = 25
+local MAX_JUMPS = 2
+
+function BetterJump.Execute(actionName, inputState, inputObject)
+
+
+	----
+
+	if inputState ~= Enum.UserInputState.Begin then
+		return Enum.ContextActionResult.Pass -- we only want to jump when the button is pressed and we ignore when the button is released
+	end
+
+	local Player = Players.LocalPlayer
+	local Char = Player.Character 
+	local hrp = Char:FindFirstChild("HumanoidRootPart")
+	local humanoid = Char:FindFirstChild("Humanoid")
+
+	if not hrp or not humanoid or not PlayerState.CanAct() then print("Player cant jump!") return end 
+  -- safety check
+
+	local state = humanoid:GetState()
+	local currentJumps = PlayerState.GetState("JumpCount") or 0
+
+	-- Check if we're on the ground
+	local isGrounded = (state == Enum.HumanoidStateType.Landed or state == Enum.HumanoidStateType.Running or state == Enum.HumanoidStateType.RunningNoPhysics)
+
+	if isGrounded then
+		hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, JUMP_POWER, hrp.AssemblyLinearVelocity.Z)
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		print("First jump!")
+		return Enum.ContextActionResult.Sink
+	end
+-- if the player is grounded, we manually make them jump
+
+
+	-- check for vault opportunity by using a raycast that shoots from the player's hrp
+	local rayOrigin = hrp.Position 
+	local rayDirection = hrp.CFrame.LookVector * 2.5 -- check 2.5 studs in front
+
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {Char}
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+
+
+	-- logic for double jump vs vault
+	if currentJumps < MAX_JUMPS  then
+		if result then
+			-- we hit a wall, vault
+			hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, VAULT_POWER, hrp.AssemblyLinearVelocity.Z)
+			print("Ledge vaulted!")
+		else -- double jump
+			hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, DJUMP_POWER, hrp.AssemblyLinearVelocity.Z)
+			print("Double jumped!")
+		end
+		PlayerState.SetState("JumpCount", currentJumps + 1)
+		-- add an animation here
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		return Enum.ContextActionResult.Sink -- we handled the double jump
+	end
+	return Enum.ContextActionResult.Pass 
+
+end
+
+return BetterJump
