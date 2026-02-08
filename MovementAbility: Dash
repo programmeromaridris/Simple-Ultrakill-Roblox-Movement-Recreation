@@ -1,0 +1,52 @@
+local Dash = {}
+
+-- // Services
+local Players = game:GetService("Players")
+
+local rs = game:GetService("ReplicatedStorage")
+local PlayerState = require(rs.Modules.PlayerState)
+local Debris = game:GetService("Debris")
+
+-- Config
+local DASH_FORCE = 100
+local DASH_DURATION = 0.3
+local DASH_CD = 1.5
+
+-- // Every movementability needs a .Execute so we can bind it with CAS (ContextActionService) in the central handler
+function Dash.Execute(actionName, inputState, inputObject)
+	if inputState ~= Enum.UserInputState.Begin then return end
+
+
+	local Player = Players.LocalPlayer
+	local Char = Player.Character
+	local humanoid = Char:FindFirstChild("Humanoid")
+	local hrp = Char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid or not PlayerState.CanAct() then return end
+
+	-- CD Check
+	local currentTime = tick()
+	if currentTime - PlayerState.GetState("LastDashTime") < DASH_CD then return end	
+	local dashDirection = humanoid.MoveDirection
+
+	if dashDirection.Magnitude == 0 then
+		dashDirection = hrp.CFrame.LookVector
+	end
+
+	PlayerState.SetState("isDashing", true)
+	print("Dashing!")
+
+-- Bodyvelocity to propel the player forward
+	local bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(100000, 0, 100000)
+	bv.Velocity = dashDirection * DASH_FORCE
+	bv.Parent = hrp
+
+	task.delay(DASH_DURATION, function()
+		bv:Destroy()
+		PlayerState.SetState("isDashing", false)
+		print("Not dashing anymore.")
+	end)
+
+end
+
+return Dash 
