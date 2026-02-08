@@ -1,0 +1,34 @@
+-- // This module is stored in replicatedstorage.
+
+
+local PlayerState = {
+	States = {
+		isRunning = false,
+		isDashing = false,
+		isSliding = false,
+  	isInteracting = false,
+		isStunned = false,
+		JumpCount = 0,
+		LastDashTime = 0,
+	}
+}
+
+-- // 
+-- Helper functions
+-- //
+function PlayerState.GetState(stateName)
+	return PlayerState.States[stateName]
+end
+
+
+function PlayerState.SetState(stateName, value)
+	if PlayerState.States[stateName] ~= nil then
+		PlayerState.States[stateName] = value
+	end
+end
+
+function PlayerState.CanAct()
+	return not PlayerState.States.isInteracting and not PlayerState.States.isStunned
+end
+
+return PlayerState
