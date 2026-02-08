@@ -1,0 +1,42 @@
+local Sprint = {}
+
+-- // Services
+local rs = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local PlayerState = require(rs.Modules.PlayerState)
+
+-- // Variables
+local NORMAL_SPEED = 20
+local RUNNING_SPEED = 30
+
+function Sprint.Execute(actionName, inputState, inputObject)
+
+	local character = Player.Character
+	if not character then return end
+	local humanoid = character:FindFirstChild("Humanoid")
+	if not humanoid then return end
+  -- safety check
+
+	if not PlayerState.CanAct() then
+		humanoid.WalkSpeed = NORMAL_SPEED
+		return
+	end
+
+	if inputState == Enum.UserInputState.Begin then
+		PlayerState.SetState("isSprinting", true)
+		humanoid.WalkSpeed = RUNNING_SPEED
+		print("Sprinting start!")
+	elseif inputState == Enum.UserInputState.End then
+		PlayerState.SetState("isSprinting", false)
+		humanoid.WalkSpeed = NORMAL_SPEED 
+		print("Sprinting end!")
+	end
+
+
+end
+
+
+
+return Sprint
+
