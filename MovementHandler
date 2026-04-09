@@ -14,6 +14,8 @@ local Dash = require(script.Parent.MovementAbilities.Dash)
 local JumpHandler = require(script.Parent.MovementAbilities.Jump)
 local M1 = require(script.Parent.MovementAbilities.M1)
 local Slide = require(script.Parent.MovementAbilities.Slide)
+local Parry = require(script.Parent.MovementAbilities.Parry)
+local GroundSlam = require(script.Parent.MovementAbilities.GroundSlam)
 
 
 -- Bind actions
@@ -26,6 +28,8 @@ CAS:BindAction("Dash", Dash.Execute, true, Enum.KeyCode.Q, Enum.KeyCode.ButtonX)
 CAS:BindAction("Jump", JumpHandler.Execute, true, Enum.KeyCode.Space)
 CAS:BindAction("M1", M1.Execute, true, Enum.UserInputType.MouseButton1)
 CAS:BindAction("Slide", Slide.Execute, true, Enum.KeyCode.C)
+CAS:BindAction("Parry", Parry.Execute, true, Enum.UserInputType.MouseButton2)
+CAS:BindAction("GroundSlam", GroundSlam.Execute, true, Enum.KeyCode.LeftControl)
 
 
 player.CharacterAdded:Connect(function(char)
