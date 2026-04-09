@@ -1,0 +1,78 @@
+local GroundSlam = {}
+
+
+-- // Services
+local Players = game:GetService("Players")
+local rs = game:GetService("ReplicatedStorage")
+local PlayerState = require(rs.Modules.PlayerState)
+local Debris = game:GetService("Debris")
+
+local SlamHitEvent = rs.Events.SlamHit
+
+
+-- Config
+local SLAM_FORCE = 100
+local SLAM_CD = 1.5
+local HITBOX_SIZE = 30
+
+
+
+function GroundSlam.Execute(actionName, inputState, inputObject)
+	if inputState ~= Enum.UserInputState.Begin then return end
+	local Player = Players.LocalPlayer
+	local Char = Player.Character
+	local humanoid = Char:FindFirstChild("Humanoid")
+	local hrp = Char:FindFirstChild("HumanoidRootPart")
+	local state = humanoid:GetState()
+	if not hrp or not humanoid or not PlayerState.CanAct() then return end
+	
+	
+	
+	-- CD Check
+	local currentTime = tick()
+	if currentTime - PlayerState.GetState("LastSlamTime") < SLAM_CD then return end	
+
+	PlayerState.SetState("isSlamming", true)
+	print("Slamming!")
+	
+	
+	
+	-------------------------------------
+	if state == Enum.HumanoidStateType.Jumping or humanoid.FloorMaterial == Enum.Material.Air  then
+		local bv = Instance.new("BodyVelocity")
+		bv.MaxForce = Vector3.new(0, 100000, 0)
+		bv.Velocity = Vector3.new(0, -1, 0) * SLAM_FORCE
+		bv.Parent = hrp 	
+		Debris:AddItem(bv, 0.4)
+		
+	-------------------------------------
+		local attackPos = (hrp.CFrame * CFrame.new(0, -1, 0)).Position
+		-- params
+		local overlapParams = OverlapParams.new()
+		overlapParams.FilterDescendantsInstances = {Char} -- dont count yourself
+		overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+		local partsinHitbox = workspace:GetPartBoundsInBox(CFrame.new(attackPos), Vector3.new(1, 1, 1) * HITBOX_SIZE, overlapParams)
+		local charactersHit = {}
+
+
+
+		for _, part in ipairs(partsinHitbox) do
+			local character = part.Parent
+			local hitHum = character:FindFirstChild("Humanoid")
+
+			if hitHum and hitHum.Health > 0 and not charactersHit[character] then
+				charactersHit[character] = true -- theyre hit
+					print(tostring(hitHum))
+					SlamHitEvent:FireServer(hitHum)
+				end
+			end
+			
+		
+	else
+		print("Player is not midair, can't groundslam!")
+	end
+	
+end
+
+
+return GroundSlam
