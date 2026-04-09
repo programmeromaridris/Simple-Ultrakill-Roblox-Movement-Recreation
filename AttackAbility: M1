@@ -1,0 +1,86 @@
+local ShootEvent = game.ReplicatedStorage.Events.ShootEvent
+local WeaponEquipped = game.ReplicatedStorage.Events.WeaponEquipped 
+-- so we can check if the player is able to hold down and fire continuously if its automatic
+
+local PlayerState = require(game.ReplicatedStorage.Modules.PlayerState)
+local player = game.Players.LocalPlayer
+local RunS = game:GetService("RunService")
+local mouse = player:GetMouse()
+local M1 = {}
+	
+
+local isShooting = false
+local autoConnection = nil
+local currentWeaponStats = nil -- client side cache set by the weapon equipped event
+
+
+
+-- // =======================
+-- Helper functions
+-- // ======================
+
+
+
+
+
+
+local function StopAutoFire()
+	isShooting = false
+	if autoConnection then
+		autoConnection:Disconnect()
+		autoConnection = nil
+	end
+end
+
+
+local function StartAutoFire(fireRate)
+	local lastFired = 0
+	autoConnection = RunS.Heartbeat:Connect(function()
+		if not isShooting then
+			StopAutoFire()
+			return
+		end
+		
+		local now = os.clock()
+		if (now - lastFired) >= fireRate then
+			lastFired = now
+			ShootEvent:FireServer(mouse.Hit.Position)
+		end
+	end)
+	
+end
+
+
+
+-- listen for server telling us which weapon we have
+WeaponEquipped.OnClientEvent:Connect(function(stats)
+	currentWeaponStats = stats
+	StopAutoFire() -- cancel any ongoing autofire on weapon switch
+end)
+
+
+
+
+
+function M1.Execute(actionName, inputState, inputObject)
+	if not currentWeaponStats then warn("shits not working lol") return end
+	local fireMode = currentWeaponStats.FireMode
+
+	
+	if inputState == Enum.UserInputState.Begin then
+		ShootEvent:FireServer(mouse.Hit.Position)
+		
+		if fireMode == "Auto" then
+			isShooting = true
+			StartAutoFire(currentWeaponStats.FireRate)
+		end
+		
+	elseif inputState == Enum.UserInputState.End then
+		StopAutoFire()
+	
+	end
+	
+	
+
+end
+return M1
