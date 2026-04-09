@@ -1,0 +1,52 @@
+local Parry = {}
+
+
+-- // Services
+local rs = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local PlayerParrying = rs.Events:FindFirstChild("PlayerParrying")
+local PlayerState = require(rs.Modules.PlayerState)
+
+local PARRY_DURATION = 5
+
+
+
+function Parry.Execute(actionName, inputState, inputObject)
+	
+	local character = Player.Character
+	if not character then return end
+	
+	local humanoid = character:FindFirstChild("Humanoid")
+	if not humanoid then return end
+	
+	-- don't spam
+	if PlayerState.GetState("isParrying") then return end
+	
+	-- we don't check for CanAct here because it'd be fun to parry while sliding
+	if inputState == Enum.UserInputState.Begin then
+		
+		PlayerState.SetState("isParrying", true)
+		PlayerParrying:FireServer(true)
+		print("Player is parrying!")
+		
+		local forceField = Instance.new("ForceField", character)
+		forceField.Visible = false
+		
+		task.delay(PARRY_DURATION, function()
+			PlayerState.SetState("isParrying", false)
+			PlayerParrying:FireServer(false)
+			
+			if forceField then 
+				forceField:Destroy()
+			end
+			
+		print("Parry ended!")
+		end)
+	end
+
+	
+end
+
+
+return Parry
